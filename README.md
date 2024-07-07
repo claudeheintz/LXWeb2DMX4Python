@@ -16,7 +16,7 @@ or, http://localhost:27688/?set=1x50_2x60
    any number of addresses can be set with /?set=ADDRESSxPERCENT
    with additional _ADDRESSxPERCENT pairs separated by underscores.
    
-or, http://localhost:27688/?setl1x11_22_33_44_55
+or, http://localhost:27688/?setl=1x11_22_33_44_55
    set list of sequential addresses starting at address
       followed by x then list of values separated by underscores
 	  setl=AxV1_V2_V3..., sets (A)@V1, (A+1)@V2, (A+2)@V3, etc
