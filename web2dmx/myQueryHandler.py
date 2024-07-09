@@ -96,6 +96,7 @@ class myQueryHandler(BaseHTTPRequestHandler):
 #
 #########################################
     def do_GET(self):
+        print("do get")
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()

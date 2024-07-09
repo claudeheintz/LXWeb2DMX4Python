@@ -38,6 +38,8 @@
 #      Modify the Art-Net broadcast address (artip) to 10.255.255.255 for standard broadcast
 #      Modify host name with specific ip address -or- 'localhost'
 #         (localhost is only used for communicating  between apps on a single computer)
+#   OR
+#      Pass hostname port broadcast_address on command line when running script
 #
 #################################################################
 
@@ -47,6 +49,7 @@ from ArtNet import ArtNetInterface
 from CTProperties import CTProperties
 import time
 import os
+import sys
 
 #######################   web2dmx class    ######################
 #################################################################
@@ -59,6 +62,8 @@ class web2DMX:
 #########################################
 #
 #   init properties dictionary of application options
+#   first from command line arguments 
+#      eg.-> $ python3 path_to_this_script hostname port broadcast_address
 #   from web2dmx.properties file.  Edit to change:
 #      Art-Net broadcast address
 #      hostname of network interface to use
@@ -66,15 +71,31 @@ class web2DMX:
 #
 #########################################
     def __init__(self):
-        #get properties from file named web2dmx.properties
+#get properties from file named 
+#CTProperties object holds dictionary of key/value pairs
         self.properties = CTProperties()
         cpath = os.path.realpath(__file__)
         self.appdirectory = os.path.dirname(cpath)
         self.properties.parseFile( self.appdirectory + "/web2dmx.properties")
-        #read application options
-        self.artip = self.properties.stringForKey("artnet_broadcast_address", "10.255.255.255")
-        self.hostname = self.properties.stringForKey("hostname", "0.0.0.0")
-        self.serverport = self.properties.intForKey("server_port", 27688)
+#read application options either from command line args if they are available
+#   or properties file dictionary from web2dmx.properties file
+# first arg is hostname if not 0.0.0.0 (any interface) the web server is bound to interface with hostname
+        if ( len(sys.argv) > 1 ):
+            self.hostname = sys.argv[1]
+        else:
+            self.hostname = self.properties.stringForKey("hostname", "0.0.0.0")
+#next is port for webserver to listen on for connections
+        if ( len(sys.argv) > 2 ):
+            self.serverport = int( sys.argv[2] )
+        else:
+            self.serverport = self.properties.intForKey("server_port", 27688)
+#last is broadcast address for sending Art-Net
+#   broadcast address must match network of an address for an existing interface
+#   you cannot sent to 10.255.255.255 if your network address is 192.168.1.17
+        if ( len(sys.argv) > 2 ):
+            self.artip = sys.argv[3]
+        else:
+            self.artip = self.properties.stringForKey("artnet_broadcast_address", "10.255.255.255")
 
 #########################################
 #
@@ -84,6 +105,7 @@ class web2DMX:
     def createArtNet(self):
         self.artnet_interface = ArtNetInterface(self.artip)
         self.artnet_interface.startSending()
+        print("Art-Net sending to " + self.artip)
 
 #########################################
 #
@@ -130,6 +152,7 @@ class web2DMX:
         f.write(bytes("<p>Address %s at %s </p>" % (a, v), "utf-8"))
         d = int((float(v)/100.0) * 255.0)
         self.artnet_interface.setDMXValue(int(a), d)
+        self.artnet_interface.sendDMXNow()
 
 ####################### end web2dmx class #######################
 #################################################################
