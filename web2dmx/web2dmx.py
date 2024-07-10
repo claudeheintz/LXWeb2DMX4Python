@@ -50,6 +50,8 @@ from CTProperties import CTProperties
 import time
 import os
 import sys
+import socket
+import ipaddress
 
 #######################   web2dmx class    ######################
 #################################################################
@@ -71,31 +73,13 @@ class web2DMX:
 #
 #########################################
     def __init__(self):
-#get properties from file named 
-#CTProperties object holds dictionary of key/value pairs
-        self.properties = CTProperties()
-        cpath = os.path.realpath(__file__)
-        self.appdirectory = os.path.dirname(cpath)
-        self.properties.parseFile( self.appdirectory + "/web2dmx.properties")
-#read application options either from command line args if they are available
-#   or properties file dictionary from web2dmx.properties file
-# first arg is hostname if not 0.0.0.0 (any interface) the web server is bound to interface with hostname
-        if ( len(sys.argv) > 1 ):
-            self.hostname = sys.argv[1]
-        else:
-            self.hostname = self.properties.stringForKey("hostname", "0.0.0.0")
-#next is port for webserver to listen on for connections
-        if ( len(sys.argv) > 2 ):
-            self.serverport = int( sys.argv[2] )
-        else:
-            self.serverport = self.properties.intForKey("server_port", 27688)
-#last is broadcast address for sending Art-Net
-#   broadcast address must match network of an address for an existing interface
-#   you cannot sent to 10.255.255.255 if your network address is 192.168.1.17
-        if ( len(sys.argv) > 2 ):
-            self.artip = sys.argv[3]
-        else:
-            self.artip = self.properties.stringForKey("artnet_broadcast_address", "10.255.255.255")
+        #   read properties (options) file named web2dmx.properties
+        self.initProperties()
+        #   read application options either from command line args if they are available
+        #   or from web2dmx.properties file
+        self.hostname   = self.findHostname()
+        self.serverport = self.findPort()
+        self.artip      = self.findBroadcastAddress()
 
 #########################################
 #
@@ -154,6 +138,113 @@ class web2DMX:
         self.artnet_interface.setDMXValue(int(a), d)
         self.artnet_interface.sendDMXNow()
 
+#########################################
+#
+#   initializes property key/value dictionary from file
+#
+#########################################
+    def initProperties(self, file = "/web2dmx.properties"):
+        #CTProperties object holds dictionary of key/value pairs
+        self.properties = CTProperties()
+        cpath = os.path.realpath(__file__)
+        self.appdirectory = os.path.dirname(cpath)
+        self.properties.parseFile( self.appdirectory + file)
+
+#########################################
+#
+#   findHostname
+#   returns first command line argument
+#   OR, value from properties file
+#   OR, ANY_ADDRESS, 0.0.0.0
+#
+#######################################
+    def findHostname(self):
+    #   first arg is hostname if not 0.0.0.0 (any interface) the web server is bound to interface with hostname
+        if ( len(sys.argv) > 1 ):
+            return  sys.argv[1]
+        hn = self.properties.stringForKey("hostname", "0.0.0.0")
+        return hn
+
+#########################################
+#
+#   findPort
+#   returns second command line argument
+#   OR, value from properties file
+#   OR, 27688
+#
+#######################################
+    def findPort(self):
+    #   second argument is port
+        if ( len(sys.argv) > 2 ):
+            return  int( sys.argv[2] )
+        return self.properties.intForKey("server_port", 27688)
+
+#########################################
+#
+#   findBroadcastAddress
+#   returns third command line argument
+#   OR, value from properties file
+#       if "auto" returns broadcast address based on
+#       the network portion of available interface address (belonging to internet family)
+#       as determined by that address's class
+#
+#######################################
+
+    def findBroadcastAddress(self):
+        if ( len(sys.argv) > 2 ):
+            return sys.argv[3]
+        baddr = self.properties.stringForKey("artnet_broadcast_address", "10.255.255.255")
+        if ( baddr == "auto"):
+            ipa = self.get_ip()
+            octets = ipa.split(".")
+            ipclass = self.getClassOfIPAddress(int(octets[0]))
+            if ( ipclass == 1 ):
+                return octets[0] + ".255.255.255"
+            if ( ipclass == 2 ):
+                return octets[0] + "." + octets[1] + ".255.255"
+            if ( ipclass == 3 ):
+                return octets[0] + "." + octets[1] + "." + octets[2] + ".255"
+            #default to broadcast to all networks
+            baddr = "255.255.255.255"
+        return baddr
+
+#########################################
+#
+#   get_ip
+#   creates an internet family socket and reads address returned by getsockname()
+#   returns localhost if this fails
+#
+#######################################
+    def get_ip(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0)
+        try:
+            # doesn't even have to be reachable
+            s.connect(('8.8.8.8', 80))
+            
+            IP = s.getsockname()[0]
+        except Exception as e:
+            print ( e )
+            IP = '127.0.0.1'
+        finally:
+            s.close()
+        return IP
+
+#########################################
+#
+#   getClassOfIPAddress
+#   takes integer from first octet of ipv4 address
+#   returns class a=1, class b=2, class c=3 or other class=0
+#
+#######################################
+    def getClassOfIPAddress(self, a):
+        if  (( a > 0 ) and  ( a < 127 )):
+            return 1
+        if  (( a > 127 ) and  ( a < 192 )):
+            return 2
+        if  (( a > 191 ) and  ( a < 224 )):
+            return 3
+        return 0
 ####################### end web2dmx class #######################
 #################################################################
 
