@@ -220,8 +220,7 @@ class web2DMX:
         s.settimeout(0)
         try:
             # doesn't even have to be reachable
-            s.connect(('8.8.8.8', 80))
-            
+            s.connect(('10.254.254.254',0))
             IP = s.getsockname()[0]
         except Exception as e:
             print ( e )
