@@ -79,6 +79,7 @@ class web2DMX:
         #   or from web2dmx.properties file
         self.hostname   = self.findHostname()
         self.serverport = self.findPort()
+        self.local_ip = None
         self.artip      = self.findBroadcastAddress()
 
 #########################################
@@ -87,7 +88,7 @@ class web2DMX:
 #
 #########################################
     def createArtNet(self):
-        self.artnet_interface = ArtNetInterface(self.artip)
+        self.artnet_interface = ArtNetInterface(self.artip, self.local_ip)
         self.artnet_interface.startSending()
         print("Art-Net sending to " + self.artip)
 
@@ -216,17 +217,20 @@ class web2DMX:
 #
 #######################################
     def get_ip(self):
+        if ( self.local_ip != None ):
+            return self.local_ip
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.settimeout(0)
         try:
-            # doesn't even have to be reachable
-            s.connect(('10.254.254.254',0))
+            # doesn't even have to be reachable, but throws an error if port 0
+            s.connect(('10.254.254.254',80))
             IP = s.getsockname()[0]
         except Exception as e:
-            print ( e )
+            print ( "error getting local ip ", e )
             IP = '127.0.0.1'
         finally:
             s.close()
+        self.local_ip = IP
         return IP
 
 #########################################
