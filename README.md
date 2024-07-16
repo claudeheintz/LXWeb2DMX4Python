@@ -1,9 +1,9 @@
 # LXWeb2DMX for Python
 
-Simple web server and Art-Net broadcast application
+Simple web server and Art-Net application
 Web server responds to get requests with a query string
 which is interpreted to set levels of dmx addresses in
-outgoing broadcast Art-Net
+outgoing Art-Net
 
 run web2dmx.py using python 3.x
 
@@ -32,12 +32,10 @@ Options for the webserver and Art-Net broadcast can be set by the command line
 or by editing the `web2dmx.properties` file.
 
 The web server is set to listen for connections on any interface and port 27688.
-Art-Net is broadcast to the network of the primary ip address found.
+Art-Net is sent to nodes discovered using the ArtPoll/ArtPollReply mechanism.
 
 You can change and bind the web server to a particular interface of the computer
 by providing the ip address of that interface as the first argument on the command
 line, or by setting the `hostname` property in the `web2dmx.properties` file.
 Likewise, the port can be specified by the second command line argument or
-`server_port` in the properties file.  Finally, the address to send Art-Net to can be
-set with a third command line argument or `artnet_broadcast_address`
-in the properties file. 
+`server_port` in the properties file.

@@ -193,12 +193,11 @@ class ArtNetInterface(DMXInterface):
 #
 #########################################
 
-    def __init__(self, bcast_ip, iface_ip, net=0, subnet=0, univ=0):
+    def __init__(self, iface_ip, net=0, subnet=0, univ=0):
         super().__init__()
         self.seqcounter = 0
         self.prcounter = 0
-        self.target_ip = bcast_ip
-        self.broadcastip = bcast_ip
+        self.target_list = []
         self.localip = iface_ip
         self.loopback = "127.0.0.1"
         self.last_poll_time = 0.0
@@ -344,7 +343,10 @@ class ArtNetInterface(DMXInterface):
         self.pollreply_buffer[178] = 128   #port 1 good
         self.pollreply_buffer[186] = self.artnet_universe 
         self.pollreply_buffer[200] = 1  # controller
-        
+
+    def startSending(self):
+        self.sendArtPoll()
+        super().startSending()
 ########################################
 #
 #   send
@@ -362,6 +364,7 @@ class ArtNetInterface(DMXInterface):
             else:
                 pt = time.time() - self.last_poll_time
                 if  pt >= 4:
+                    self.removeExpiredTargets()
                     self.sendArtPoll()
                     self.last_poll_time = time.time()
                 else:
@@ -390,7 +393,9 @@ class ArtNetInterface(DMXInterface):
     def sendDMXNow(self):
         self.updateCounter()
         with self.lock:
-            self.udpsocket.sendto(self.send_buffer, (self.target_ip, self.port()))
+            for n in self.target_list:
+                self.udpsocket.sendto(self.send_buffer, (n.address, self.port()))
+                print("sent dmx to ", n.address)
         self.last_send_time = time.time()
 
 ########################################
@@ -495,6 +500,7 @@ class ArtNetInterface(DMXInterface):
         self.updatePollReplyCounter()
         with self.lock:
             self.udpsocket.sendto(self.pollreply_buffer, (self.recdaddr[0], self.port()))
+            print("sent reply to ", self.recdaddr[0])
 
 ########################################
 #
@@ -506,8 +512,7 @@ class ArtNetInterface(DMXInterface):
             if ( self.data[18] == self.artnet_net ):  # matches net, subnet
                 if ( self.data[19] == self.artnet_subnet ):
                     if ( self.replyMatchesNetwork() == 1 ):
-                        self.target_ip = self.recdaddr[0]   #target this because it matches
-                        print("Set target to detected-> ", self.recdaddr[0])
+                        self.foundNode(self.recdaddr[0])
 
 ########################################
 #
@@ -517,3 +522,53 @@ class ArtNetInterface(DMXInterface):
     def artDMXReceived(self):
         if ( self.recd_from_local() == 0 ):
             print (" Art DMX ", self.recdaddr[0])
+
+########################################
+#
+#   foundNode
+#      append to target list, remove broadcast ip 
+#      if node previously found, update polltime
+#
+#########################################
+    def foundNode( self, ipaddr ):
+        x = self.targetWithAddress(ipaddr)
+        if ( x == None ):
+            self.target_list.append(ArtNetNode(ipaddr))
+            print( "added node: ", ipaddr )
+        else:
+            x.pollReceived()
+
+    def targetWithAddress(self, ipaddr):
+        for n in self.target_list:
+            if ( n.address == ipaddr ):
+                return n
+        return None
+
+    def removeExpiredTargets(self):
+        expired = []
+        for n in self.target_list:
+            if ( n.expired() == 1 ):
+                expired.append(n)
+        for n in expired:
+            self.target_list.remove(n)
+            print("removed node with address ", n.address)
+
+##################################################################################
+#                               ArtNetNode
+#
+#           encapsulates artnet node's ipaddress from ArtPoll and the time it last polled
+#
+##################################################################################
+class ArtNetNode(object):
+
+    def __init__(self, ipaddr):
+        self.address = ipaddr
+        self.polltime = time.time()
+    
+    def pollReceived(self):
+        self.polltime = time.time()
+        
+    def expired(self):
+        if ( time.time()-self.polltime > 12 ):
+            return 1
+        return 0

@@ -18,7 +18,7 @@
 #   example use:
 #   Use a  browser or curl to send a GET request to http://192.168.1.149:27688/?set=1x50
 #           curl -X GET http://192.168.1.149:27688/?set=1x50
-#       this sets the broadcast Art-Net sending to 192.168.1.255, address 1 to 50%
+#       this sets the going outArt-Net dMX packet's address 1 to 50%
 #
 #   or, http://localhost:27688/?set=1x50_2x60
 #           curl -X GET  http://localhost:27688/?set=1x50_2x60
@@ -35,11 +35,12 @@
 
 #
 #   Edit web2dmx properties file to make the following changes:
-#      Modify the Art-Net broadcast address (artip) to 10.255.255.255 for standard broadcast
 #      Modify host name with specific ip address -or- 'localhost'
 #         (localhost is only used for communicating  between apps on a single computer)
+#      Modify the port to use
 #   OR
-#      Pass hostname port broadcast_address on command line when running script
+#      Pass hostname port on command line when running script
+#         eg. $ python3 web2dmx.py 192.168.1.45 29101
 #
 #################################################################
 
@@ -65,9 +66,8 @@ class web2DMX:
 #
 #   init properties dictionary of application options
 #   first from command line arguments 
-#      eg.-> $ python3 path_to_this_script hostname port broadcast_address
+#      eg.-> $ python3 path_to_this_script hostname port
 #   from web2dmx.properties file.  Edit to change:
-#      Art-Net broadcast address
 #      hostname of network interface to use
 #      port for web server to use
 #
@@ -80,7 +80,7 @@ class web2DMX:
         self.hostname   = self.findHostname()
         self.serverport = self.findPort()
         self.local_ip = None
-        self.artip      = self.findBroadcastAddress()
+        self.local_ip = self.get_ip()
 
 #########################################
 #
@@ -88,9 +88,9 @@ class web2DMX:
 #
 #########################################
     def createArtNet(self):
-        self.artnet_interface = ArtNetInterface(self.artip, self.local_ip)
+        self.artnet_interface = ArtNetInterface(self.local_ip)
         self.artnet_interface.startSending()
-        print("Art-Net sending to " + self.artip)
+        print("Art-Net started.")
 
 #########################################
 #
@@ -192,22 +192,17 @@ class web2DMX:
 #######################################
 
     def findBroadcastAddress(self):
-        if ( len(sys.argv) > 2 ):
-            return sys.argv[3]
-        baddr = self.properties.stringForKey("artnet_broadcast_address", "10.255.255.255")
-        if ( baddr == "auto"):
-            ipa = self.get_ip()
-            octets = ipa.split(".")
-            ipclass = self.getClassOfIPAddress(int(octets[0]))
-            if ( ipclass == 1 ):
-                return octets[0] + ".255.255.255"
-            if ( ipclass == 2 ):
-                return octets[0] + "." + octets[1] + ".255.255"
-            if ( ipclass == 3 ):
-                return octets[0] + "." + octets[1] + "." + octets[2] + ".255"
+        ipa = self.get_ip()
+        octets = ipa.split(".")
+        ipclass = self.getClassOfIPAddress(int(octets[0]))
+        if ( ipclass == 1 ):
+            return octets[0] + ".255.255.255"
+        if ( ipclass == 2 ):
+            return octets[0] + "." + octets[1] + ".255.255"
+        if ( ipclass == 3 ):
+            return octets[0] + "." + octets[1] + "." + octets[2] + ".255"
             #default to broadcast to all networks
-            baddr = "255.255.255.255"
-        return baddr
+        return "255.255.255.255"
 
 #########################################
 #
@@ -217,7 +212,7 @@ class web2DMX:
 #
 #######################################
     def get_ip(self):
-        if ( self.local_ip != None ):
+        if ( self.local_ip != None ):       #cached result
             return self.local_ip
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.settimeout(0)
