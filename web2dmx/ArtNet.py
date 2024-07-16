@@ -14,6 +14,7 @@ import threading
 import time
 import ipaddress
 from select import select
+from CTNetUtil import CTNetUtil
 
 ##################################################################################
 #                               DMXInterface
@@ -395,7 +396,6 @@ class ArtNetInterface(DMXInterface):
         with self.lock:
             for n in self.target_list:
                 self.udpsocket.sendto(self.send_buffer, (n.address, self.port()))
-                print("sent dmx to ", n.address)
         self.last_send_time = time.time()
 
 ########################################
@@ -494,13 +494,14 @@ class ArtNetInterface(DMXInterface):
 ########################################
 #
 #   sendArtPollReply ->send reply to Art-Net poll
+#   reply to broadcast address of ArtPoll sender
 #
 #########################################
     def sendArtPollReply(self):
         self.updatePollReplyCounter()
+        netbroadcastip = CTNetUtil.findBroadcastAddress(self.recdaddr[0])
         with self.lock:
-            self.udpsocket.sendto(self.pollreply_buffer, (self.recdaddr[0], self.port()))
-            print("sent reply to ", self.recdaddr[0])
+            self.udpsocket.sendto(self.pollreply_buffer, (netbroadcastip, self.port()))
 
 ########################################
 #

@@ -26,6 +26,7 @@ class myQueryHandler(BaseHTTPRequestHandler):
 #   setOwner->owner object to process results of query
 #      owner is class variable
 #      owner must respond to do_set( f(stream), a(address), v(value) )
+#      owner must respond to query_complete(f(stream))
 #########################################
     @classmethod
     def setOwner(cls, owner):
@@ -54,6 +55,7 @@ class myQueryHandler(BaseHTTPRequestHandler):
             scv = sp.split("x")
             if ( len(scv) == 2 ):
                 self.owner.do_set( self.wfile, scv[0], scv[1])
+                self.owner.query_complete( self.wfile )
 #########################################
 #
 #   do_setl_query->splits query on the right of 'setl='
@@ -69,6 +71,7 @@ class myQueryHandler(BaseHTTPRequestHandler):
             for v in varr:
                 self.owner.do_set( self.wfile, addr, v)
                 addr = addr + 1
+            self.owner.query_complete( self.wfile )
 #########################################
 #
 #   do_QUERY processes query portion of url from a get request

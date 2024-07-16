@@ -47,6 +47,7 @@
 from http.server import HTTPServer
 from myQueryHandler import myQueryHandler
 from ArtNet import ArtNetInterface
+from CTNetUtil import CTNetUtil
 from CTProperties import CTProperties
 import time
 import os
@@ -137,6 +138,8 @@ class web2DMX:
         f.write(bytes("<p>Address %s at %s </p>" % (a, v), "utf-8"))
         d = int((float(v)/100.0) * 255.0)
         self.artnet_interface.setDMXValue(int(a), d)
+
+    def query_complete(self, f):
         self.artnet_interface.sendDMXNow()
 
 #########################################
@@ -182,30 +185,6 @@ class web2DMX:
 
 #########################################
 #
-#   findBroadcastAddress
-#   returns third command line argument
-#   OR, value from properties file
-#       if "auto" returns broadcast address based on
-#       the network portion of available interface address (belonging to internet family)
-#       as determined by that address's class
-#
-#######################################
-
-    def findBroadcastAddress(self):
-        ipa = self.get_ip()
-        octets = ipa.split(".")
-        ipclass = self.getClassOfIPAddress(int(octets[0]))
-        if ( ipclass == 1 ):
-            return octets[0] + ".255.255.255"
-        if ( ipclass == 2 ):
-            return octets[0] + "." + octets[1] + ".255.255"
-        if ( ipclass == 3 ):
-            return octets[0] + "." + octets[1] + "." + octets[2] + ".255"
-            #default to broadcast to all networks
-        return "255.255.255.255"
-
-#########################################
-#
 #   get_ip
 #   creates an internet family socket and reads address returned by getsockname()
 #   returns localhost if this fails
@@ -214,35 +193,8 @@ class web2DMX:
     def get_ip(self):
         if ( self.local_ip != None ):       #cached result
             return self.local_ip
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.settimeout(0)
-        try:
-            # doesn't even have to be reachable, but throws an error if port 0
-            s.connect(('10.254.254.254',80))
-            IP = s.getsockname()[0]
-        except Exception as e:
-            print ( "error getting local ip ", e )
-            IP = '127.0.0.1'
-        finally:
-            s.close()
-        self.local_ip = IP
-        return IP
+        return CTNetUtil.get_ip_address()
 
-#########################################
-#
-#   getClassOfIPAddress
-#   takes integer from first octet of ipv4 address
-#   returns class a=1, class b=2, class c=3 or other class=0
-#
-#######################################
-    def getClassOfIPAddress(self, a):
-        if  (( a > 0 ) and  ( a < 127 )):
-            return 1
-        if  (( a > 127 ) and  ( a < 192 )):
-            return 2
-        if  (( a > 191 ) and  ( a < 224 )):
-            return 3
-        return 0
 ####################### end web2dmx class #######################
 #################################################################
 
