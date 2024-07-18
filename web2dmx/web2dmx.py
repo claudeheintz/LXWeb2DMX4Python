@@ -89,7 +89,7 @@ class web2DMX:
 #
 #########################################
     def createArtNet(self):
-        self.artnet_interface = ArtNetInterface(self.local_ip)
+        self.artnet_interface = ArtNetInterface(self.local_ip) #ArtNetInterface(self.local_ip, unicast_ip)
         self.artnet_interface.startSending()
         print("Art-Net started.")
 

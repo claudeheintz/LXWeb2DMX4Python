@@ -194,12 +194,13 @@ class ArtNetInterface(DMXInterface):
 #
 #########################################
 
-    def __init__(self, iface_ip, net=0, subnet=0, univ=0):
+    def __init__(self, iface_ip, target_ip = None, net=0, subnet=0, univ=0):
         super().__init__()
         self.seqcounter = 0
         self.prcounter = 0
         self.target_list = []
         self.localip = iface_ip
+        self.unicast_ip = target_ip
         self.loopback = "127.0.0.1"
         self.last_poll_time = 0.0
         self.namebytes = bytes("LXWeb2DMX", 'utf-8')
@@ -394,8 +395,11 @@ class ArtNetInterface(DMXInterface):
     def sendDMXNow(self):
         self.updateCounter()
         with self.lock:
-            for n in self.target_list:
-                self.udpsocket.sendto(self.send_buffer, (n.address, self.port()))
+            if ( self.unicast_ip == None ):
+                for n in self.target_list:
+                    self.udpsocket.sendto(self.send_buffer, (n.address, self.port()))
+            else:
+                self.udpsocket.sendto(self.send_buffer, ( self.unicast_ip, self.port()))
         self.last_send_time = time.time()
 
 ########################################
