@@ -240,6 +240,18 @@ class ArtNetInterface(DMXInterface):
 
 ########################################
 #
+#   dmx2level and level2dmx
+#        return integer level(0-100) or dmx(0-255)
+#
+#########################################
+    def dmx2level(dmx):
+        return int(round(float(dmx)/2.55))
+
+    def level2dmx(level):
+        return int((float(level)/100.0) * 255.0)
+
+########################################
+#
 #   setupSocket and options
 #   bind to any interface and Art-Net port
 #
@@ -416,6 +428,9 @@ class ArtNetInterface(DMXInterface):
         with self.lock:
             self.send_buffer[address+17] = value
 
+    def setDMXLevel(self, address, level):
+        self.send_buffer[address+17] = ArtNetInterface.level2dmx(level)
+
 ########################################
 #
 #   setDMXValues sets slots directly in DMX packet buffer
@@ -425,6 +440,17 @@ class ArtNetInterface(DMXInterface):
         with self.lock:
             for i in range (len(values)):
                 self.send_buffer[18+i] = values[i]
+
+########################################
+#
+#   getDMXValue returns slot directly from DMX packet buffer
+#
+#########################################
+    def getDMXValue(self, address):
+        return self.send_buffer[address+17]
+
+    def getDMXLevel(self, address):
+        return ArtNetInterface.dmx2level(self.send_buffer[address+17])
 
 ########################################
 #

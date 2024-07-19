@@ -44,8 +44,7 @@
 #
 #################################################################
 
-from http.server import HTTPServer
-from myQueryHandler import myQueryHandler
+from web2dmxServer import web2dmxServer
 from ArtNet import ArtNetInterface
 from CTNetUtil import CTNetUtil
 from CTProperties import CTProperties
@@ -82,6 +81,7 @@ class web2DMX:
         self.serverport = self.findPort()
         self.local_ip = None
         self.local_ip = self.get_ip()
+        self.html_table = self.properties.stringForKey("html_table", "yes")
 
 #########################################
 #
@@ -102,30 +102,7 @@ class web2DMX:
 #
 #########################################
     def createWebServer(self):
-        self.web_server = HTTPServer((self.hostname, self.serverport), myQueryHandler)
-        myQueryHandler.setOwner(self)
-
-#########################################
-#
-#   runWebServer
-#      serve_forever BLOCKS until KeyboardInterrupt throws an exception
-#
-#########################################
-    def runWebServer(self):
-        print("Starting web server http://%s:%s" % (self.hostname, self.serverport))
-        try:
-            self.web_server.serve_forever()
-        except KeyboardInterrupt:
-            pass
-
-#########################################
-#
-#   closeWebServer
-#
-#########################################
-    def closeWebServer(self):
-        self.web_server.server_close()
-        print("Web server stopped.")
+        self.web_server = web2dmxServer(self, self.hostname, self.serverport)
 
 #########################################
 #
@@ -137,11 +114,33 @@ class web2DMX:
 #########################################
     def do_set(self, f, a, v):
         f.write(bytes("<p>Address %s at %s </p>" % (a, v), "utf-8"))
-        d = int((float(v)/100.0) * 255.0)
-        self.artnet_interface.setDMXValue(int(a), d)
+        self.artnet_interface.setDMXLevel(int(a), v)
 
     def query_complete(self, f):
         self.artnet_interface.sendDMXNow()
+        if ( self.html_table == "yes"):
+            f.write(bytes("<table border=1px>\n", "utf-8"))
+            f.write(bytes("<tr><td width=30> </td>", "utf-8"))
+            a = 1
+            for c in range(20):
+                f.write(bytes("<td width=30>%s</td>" % str(a) , "utf-8"))
+                a = a + 1
+            f.write(bytes("</tr>\n", "utf-8"))
+            a = 1
+            for r in range(26):
+                f.write(bytes("<tr><td width=35><b>%s</b></td>" % str(a-1), "utf-8"))
+                if ( r == 25 ):
+                    cn = 12
+                else:
+                    cn = 20
+                for c in range(cn):
+                    if ( c == 9 ):
+                        f.write(bytes("<td><b>%s<b></td>" % str(self.artnet_interface.getDMXLevel(a)) , "utf-8"))
+                    else:
+                        f.write(bytes("<td>%s</td>" % str(self.artnet_interface.getDMXLevel(a)) , "utf-8"))
+                    a = a + 1
+                f.write(bytes("</tr\n>", "utf-8"))
+            f.write(bytes("</table>\n", "utf-8"))
 
 #########################################
 #
@@ -216,5 +215,5 @@ if __name__ == "__main__":
     web2dmx.createArtNet()
     web2dmx.createWebServer()
 
-    web2dmx.runWebServer()
-    web2dmx.closeWebServer()
+    web2dmx.web_server.runWebServer()
+    web2dmx.web_server.closeWebServer()
