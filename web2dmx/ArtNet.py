@@ -423,6 +423,9 @@ class ArtNetInterface(DMXInterface):
 #
 #   setDMXValue sets slot directly in DMX packet buffer
 #
+#   setDMXLevel converts level (0-100) to (0-255) and 
+#      sets slot directly in DMX packet buffer
+#
 #########################################
     def setDMXValue(self, address, value):
         with self.lock:
@@ -443,7 +446,8 @@ class ArtNetInterface(DMXInterface):
 
 ########################################
 #
-#   getDMXValue returns slot directly from DMX packet buffer
+#   getDMXValue returns slot directly from DMX packet buffer (0-255)
+#   getDMXLevel returns level (0-100) from DMX packet buffer 
 #
 #########################################
     def getDMXValue(self, address):
